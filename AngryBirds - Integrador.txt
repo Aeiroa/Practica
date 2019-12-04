@@ -1,0 +1,87 @@
+A) CUIDADO CON LOS PAJAROS
+1) Obtener la fuerza de un pajaro
+
+PajaroComun << fuerza() = 2 * nivelIra
+Red << fuerza() = nivelIra * 10 * enojos // override
+Bomb << fuerza() = super().min(topeDeFuerza) //override
+Chuck << fuerza() = 150 + 5 * 0.max(velocidad - 80) //override
+Terence << fuerza() = nivelIra * multiplicador * enojos //override
+Matilda << fuerza() = super() + self.totalFuerzaHuevos() //override
+Matilda << totalFuerzaHuevos() = huevos.sum({huevo => huevo.fuerza()})
+Huevo << fuerza () = peso
+
+//todos los pajaros heredan de pajaro PajaroComun
+
+2) Hacer enojar a un pajaro
+
+PajaroComun << enojarse() { nivelIra *= 2}
+Chuck << enojarse() { veloidad *= 2 } //override
+Matilda << enojarse() {huevos.add(new Huevo(peso = 2))}
+
+3) Obtener los pajaros fuertes de la Isla, que son los que tienen una fuerza de más de 50
+
+islaPajaro << losMasFuertes() = pajaros.filter({pajaro => pajaro.esFuerte() })
+PajaroComun << esFuerte () = self.fuerza() > 50
+
+4) Obtener la fuerza de la isla, que es la suma de la fuerza de todos sus pajaros fuertes
+
+islaPajaro << fuerza() { self.losMasFuertes().sum({pajaro => pajaro.fuerza() }) }
+
+B) UNA ISLA SINIESTRA
+1)Hacer que suceda un evento en la islaPajaro
+
+islaPajaro << realizar(evento){ pajaros.forEach({pajaro => evento.afectar(pajaro)})
+
+sesionDeManejoDeIra << afectar(pajaro) {pajaro.tranquilizarse()}
+PajaroComun << tranquilizarse() {nivelIra -= 5}
+Chuck << tranquilizarse() {nivelIra = nivelIra}
+
+InvacionDeCerditos << afectar(pajaro) {cantidadInvasores.div(100).times({x=>pajaro.enojarse()})}
+
+FiestaSorpresa << afectar(pajaro) {
+    if(self.hayHomenajeados()){ 
+        homenajeados.forEach ({pajaro => pajaro.enojarse()}) }
+FiestaSorpresa << hayHomenajeados() { homenajeados.isEmpty().negate() }
+
+EventosDesafortunados << afectar(pajaro) {eventos.forEach({ evento => evento.afectar(pajaro) }) }
+
+C) GUERRA PORCINA
+1) Saber si un pajaro puede derribar un obstaculo
+
+PajaroComun << puedeDerribar(obstaculo) = self.fuerza() > obstaculo.resistencia()
+
+Paredes << resistencia () = multiplicador * anchoPared   
+cerditosObreros << resistencia() = 50
+CerditosArmados << resistencia() = 10 * armadura.resistencia()
+// clase armadura donde se inicializan los cascos y los escudos
+
+2) Hacer que la islaPajaro ataque a la islaCerdito
+
+islaPajaro << atacarA(isla) {
+    pajaros.forEach ({pajaro => isla.serAtacadaPor(pajaro)})}
+
+islaCerdito << serAtacadaPor(pajaro) { 
+    if (self.hayObstaculos() and pajaro.puedeDerribar(obstaculos.head())) {
+        obstaculos.remove(obstaculos.head())
+    }
+}
+
+islaCerdito << hayObstaculos () = obstaculos.isEmpty().negate()
+
+3) Saber si se recuperaron los huevos, es decir, si la isla quedó libre de obstaculos
+
+islaPajaro << recuperaronHuevosDe (isla) => isla.quedoSinObstaculos() 
+islaCerdito << quedoSinObstaculos() = self.hayObstaculos().negate()
+
+D) ¿Y SI SE ABREN LOS HUEVOS?
+Si quisieramos incorporar nuevos pajaros a la isla. ¿Qué cambios habría que hacer en la solucion planteada?
+¿Qué conceptos nos ayudan?
+
+islaPajaro << agregarPajaro(pajaro) { pajaros.add() }
+
+Polimorfismo, ya que todos los pajaros son tratados de la misma forma, más allá de la rta esperada.
+Asignacion de Responsabilidad, ya que la isla maneja qué pajaro se agrega y cual no, los pajaros no
+conocen a la isla, la isla los conoce a ellos.
+
+
+

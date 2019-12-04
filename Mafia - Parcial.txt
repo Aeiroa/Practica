@@ -1,0 +1,136 @@
+1) OBTENER PARA UNA FAMILIA..
+a) El conjunto de integrantes activos, y el de los integrantes capos.
+
+Familia << integrantesActivos() = integrantesFamilia.filter({integrante => integrante.activo()})
+//Integrantes Capos y Activos:
+Familia << atacantesCapos() = integrantesActivos().filter({integrante => integrante.esCapo()})
+
+Integrante << esCapo() = puntosHonor > 100 and self.tieneArmaHeavy()
+Integrante << tieneArmaHeavy() = armas.any({arma => arma.esHeavy()})
+Armas << esHeavy() = potenciaDestructiva > 200 or honorOtorgado > 10
+
+//Integrantes solamente Capos:
+Familia << integrantesCapos() = integrantesFamilia.filter({integrante => integrante.esCapo()})
+
+Integrante << esCapo() = puntosHonor > 100 and self.tieneArmaHeavy()
+Integrante << tieneArmaHeavy() = armas.any({arma => arma.esHeavy()})
+Armas << esHeavy() = potenciaDestructiva > 200 or honorOtorgado > 10
+
+-------------------------------------------------------------------------------------
+b) El conjunto de armas heavies
+
+Familia << armasHeavies() = self.armasDeIntegrantes().filter({arma => arma.esHeavy()})
+Familia << armasDeIntegrantes() = integrantes.map({integrante => integrante.armas()})
+
+-------------------------------------------------------------------------------------
+c. Las zonas en las que tiene presencia, que ocupa al menos un local
+
+Familia << zonasDePresencia() = locales.map({local => local.zona()})
+
+--------------------------------------- o --------------------------------------------
+2) OBTENER LA FAMILIA MÁS HONORABLE (CON MÁS PUNTOS DE HONOR) ENTRE LAS QUE TIENEN PRESENCIA EN UNA DETERMINADA ZONA.
+
+Zona << familiaMasHonorable() = self.familiasEnLaZona().max({familia => familia.honor())
+Zona << familiasEnLaZona() =  locales.map({local => local.familiaAlPoder()})
+
+Familia << honor() = reservaDeHonor + self.puntosPorCapos() + self.puntosPorLocales()
+Familia << puntosPorCapos() = integrantesFamilia.count(integrante => integrante.esCapo()) * 20
+Familia << puntosPorLocales() = locales.size() * 10
+
+--------------------------------------- o --------------------------------------------
+3) ATAQUE A LOCALES
+a) Saber si a una familia le conviene atacar un loca, o sea, si el ataque será exitoso. 
+Tener en cuenta que a nadie le conviene atacar un local que ya ocupa.
+
+Familia << convieneAtacar(unLocal) = unLocal.puedeSerAtacadoPor(self) and !locales.contains(unLocal)
+
+Restaurante << puedeSerAtacadoPor(familia) = familia.integrantesActivos() > 5 and clientes.isEmpty() and familia.integrantesHeavies() > 3
+Familia << integrantesHeavies() = self.integrantesActivos().count({integrante => integrante.tieneArmaHeavy()})
+
+TallerClandestino << puedeSerAtacadoPor(familia) = familia.atacantesCapos().size() > defensores.size() and 
+defensores.all({defensor => defensor.honor() > familia.atacanteCapoHonorable()})
+Familia << atacanteCapoHonorable() = self.atacantesCapos().max(atacante => atacante.honor())
+
+Casino << puedeSerAtacadoPor(familia) = false 
+
+---------------------------------------------------------------------------------------
+b) Saber a que locales le conviene atacar a una familia en las zonas en las que tiene presencia.
+
+Familia << convieneAtacarEnSuZona() = self.zonasDePresencia().map({zona => zona.localesConvenientesPara(self)})
+Zona << localesConvenientesPara(familia) = locales.filter({local => local.puedeSerAtacadoPor(familia)})
+
+---------------------------------------------------------------------------------------
+c) Lograr que las familias enteinda el mensaje "perdistePorMasacre:unLocal" que libera el local y mata (osea, simplemete saca de todos lados)
+a los integrantes de la familia que están en el mismo.
+
+Familia << perdistePorMasacre(unLocal) { 
+    unLocal.esLiberado() 
+    self.matarIntegrantesDe(unLocal)
+    }
+
+Familia >> matarIntegrantesDe(unLocal){
+    integrantes.removeAll(unLocal.defensores())
+}
+
+Local << esLiberado(){
+    self.defensoresMueren()
+    familiaAlPoder = sinDueño
+}
+
+Local << defensoresMueren() { defensores = [] }
+
+----------------------------------------------------------------------------------------
+d) Realizar el ataque de un local con las consecuencias indicadas más arriba, tanto si el ataque es exitoso como si no
+
+Familia << atacarA(unLocal) { if (self.convieneAtacar(unLocal)){
+    unLocal.ataqueExitosoDe(self)
+} self.ataqueFracaso() }
+
+Local << ataqueExitoso(familia){
+    familiaAlPoder.BajaDefensores(defensores) 
+    self.defensoresMueren()
+    defensores.add(familia.algunAtacante())
+    familiaAlPoder = familia
+}
+
+Familia << algunAtacante() = self.integrantesActivos().anyone()
+Familia << BajaDefensores(integrantes) { intengrantesFamilia.removeAll(integrantes) }
+
+Familia << ataqueFracaso() {
+    self.removerDeshonras()
+    self.desarmarHonrados()
+}
+
+Familia << removerDeshonras() { integrantesActivos().removeAllSuchThat({integrante => integrante.deshonrado()}) }
+Familia << desarmarHonrados() { integrantesActivos().forEach({integrante => integrante.quitarArmas()}) }
+
+Integrante << deshonrado() = honor() < 200
+Integrante << quitarArmas() { armas = [] }
+
+--------------------------------------- o --------------------------------------------
+4) ATAQUES A ZONAS 
+a) Saber si una zona es homogenea, todos sus locales estan ocupados por la misma familia
+
+Zona << esHomogenea() = locales.all({ local1, local2 => local1.familiaenPoder() == local2.familiaEnPoder() })
+
+---------------------------------------------------------------------------------------
+b) Saber si una familia le conviene atacar una zona.
+
+Familia << convieneAtacarUna(zona) = zona.puedeSerAtacadoPor(self) 
+
+Zona << puedeSerAtacadoPor(familia) = locales.all(local => local.puedeSerAtacadoPor(familia)) and self.esVulnerableA(familia)
+Zona << esVulnerableA(familia) = familia.integrantesActivos().size() > 2 * self.integrantesDeLaZona().size()
+Zona<< integrantesDeLaZona() = locales.map({local => local.integrantesTotales()})
+Local << integrantesTotales() = familiaAlPoder.integrantesFamilia()
+
+-----------------------------------------------------------------------------------------
+c) Realizar el ataque a una zona con las consecuencias indicadas más arriba, tanto si el ataque es exitoso como si no
+Familia << atacarUna(zona) { if (self.convieneAtacarUna(zona)){
+    zona.ataqueExitosoDe(self)
+} self.ataqueFracaso() } //ya definido
+
+Zona << ataqueExitoso(familia){
+    locales.forEach(local => local.ataqueExitoso(familia))
+}
+
+
