@@ -1,0 +1,102 @@
+Punto 1) Hacer que una persona cumpla un sueño, lo que implica pasar algunas validaciones previas:
+
+Persona << cumplirSueño(unSueño){
+    if(self.puedeCumplirSueño(unSueño)){
+        unSueño.cumplirsePara(self)
+        self.agregarACumplidos(unSueño)
+    } else {
+        throw Exception("No puede cumplir el sueño") //No es necesaria la Exception
+    }
+}
+
+Persona << agregarACumplidos(unSueño){
+    sueñosCumplidos.add(unSueño)
+    sueñosPendientes.remove(unSueño)
+    self.recibirFelicidadPor(unSueño)
+}
+
+Persona << recibirFelicidadPor(unSueño) {
+    nivelFelicidad += unSueño.felicidadQueBrinda()
+}
+
+Persona << puedeCumplirSueño(unSueño){
+    unSueño.esValidoPara(self)
+}
+
+RecibirseDeCarrera << esValidoPara(unaPersona) {
+    unaPersona.quiereEstaCarrera(carrera) and unaPersona.yaSeRecibioDeEsto(carrera)
+}
+
+RecibirseDeCarrera << cumplirsePara(unaPersona) {
+    unaPersona.sumarTitulo(carrera) 
+}
+
+Persona << sumarTitulo(carrera) {
+    titulos.add(carrera)
+    carrerasQueridas.remove(carrera)
+}
+
+Persona << quiereEstaCarrera() = carrerasQueridas.contains(carrera)
+Persona << yaSeRecibioDeEsto(unaCarrera) = titulos.contains(unaCarrera)
+
+tenerHijx << esValidoPara(unaPersona) = true
+tenerHijx << cumplirsePara(unaPersona) {
+    unaPersona.tenerHijx()
+}
+Persona << tenerHijx() {
+    hijos = true
+}
+
+Viajar << esValidoPara(unaPersona) = true
+Viajar << cumplirsePara(unaPersona) {}
+
+
+AdoptarHijxs << esValidoPara(unaPersona){
+    unaPersona.hijx().negate()
+}
+AdoptarHijxs << cumplirsePara(unaPersona) {
+    unaPersona.tenerHijx()
+}
+
+ConseguirLaburo << esValidoPara(unaPersona) = unaPersona.quiereEseSueldo(sueldo)
+ConseguirLaburo << cumplirsePara(unaPersona) {}
+
+Persona << quiereEseSueldo(unSueldo) = unSueldo >= plataQuerida
+
+
+
+--------------------------------------------------------------------------------
+Punto 2) Modelar un sueño multiple
+
+Persona << cumplirSueños (unosSueños){
+    if (self.puedeCumplir(unosSueños)){
+        unosSueños.forEach({sueño => self.cumplirSueño(sueño)})
+    }
+}
+
+Persona << puedeCumplir(unosSueños) {
+    unosSueños.all({sueño => self.puedeCumplirSueño(sueño)})
+}
+
+Punto 3) 
+
+Persona >> cumplirPendiente(){
+    self.cumplirSueño(tipo.sueñoQuePrefiere(sueñosPendientes))
+}
+
+alocados << sueñoQuePrefiere(listaDeSueños) = listaDeSueños.anyone()
+obsesivos << sueñoQuePrefiere(listaDeSueños) = listaDeSueños.first()
+realistas << sueñoQuePrefiere(listaDeSueños) = listaDeSueños.max({sueño => sueño.felicidadQueBrinda()})
+
+Punto 4)
+
+Persona << esFeliz() = nivelFelicidad > self.felicidoniosSumados()
+Persona << felicidoniosSumados() = sueñosPendientes.sum({sueño => sueño.felicidadQueBrinda()})
+
+Punto 5) 
+
+Persona << esAmbiociosa() = 3 > self.sueñosFelices()
+Persona << sueñosFelices() = self.todosLosSueños().count({sueño => sueño.esMuyFeliz() })
+Persona << todosLosSueños() = sueñosCumplidos + sueñosPendientes
+
+Sueños << esMuyFeliz() = felicidadQueBrinda > 100 
