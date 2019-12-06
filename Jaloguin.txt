@@ -1,0 +1,161 @@
+A) SUSTOS
+1. Obtener la capacidad de asustar de un niño
+
+Niñx << capacidadDeAsustar() = self.sustosDeElementos() * actitud
+Niñx << sustosDeElementos() = elementos.sum({ elemento => elemento.sustoQueGenera() })
+
+maquillaje << sustoQueGenera() = sustoQueGenera
+TrajesTiernos << sustoQueGenera() = sustoQueGenera
+TrajesTerrorificos << sustoQueGenera() = sustoQueGenera //getter
+
+---------------------------------------------------------------------------------------
+2. Hacer que un niño intente asustar a alguien, obteniendo los caramelos, si lo logra.
+
+Niñx << asustarA(unaPersona) {      //Niñx y Legion interfaz de Asustador
+    unaPersona.serAsustadaPor(self)
+}
+----*General
+AdultoComun << serAsustadaPor(unAsustador) {
+    self.asustarseSiSePuedePor(unAsustador)
+    self.agregarALista(unAsustador)
+}
+AdultoComun << asustarseSiSePuedePor(unAsustador) {
+    if(puedeSerAsustadoPor(unAsustador)){
+        self.brindarCaramelosA(unAsustador)
+    }
+}
+
+AdultoComun << brindarCaramelosA (unAsustador) {
+    var caramelos = self.cantidadDeCaramelosQueBrinda()
+    unAsustador.recibirCaramelos(caramelos)
+ }
+---*
+AdultoComun << puedeSerAsustadoPor(unAsustador) {
+    self.tolerancia() < unAsustador.capacidadDeAsustar()
+}
+
+Niñx << recibirCaramelos(unaCantidad) {
+     caramelos += unaCantidad
+}
+
+AdultoComun << agregarALista(unAsustador) = niñosQueIntentaron.add(unAsustador)
+AdultoComun << cantidadDeCaramelosQueBrinda() = self.tolerancia() / 2
+AdultoComun << tolerancia() = 10 * self.cantidadDeNiñosConMuchosCaramelos()
+AdultoComun << cantidadDeNiñosConMuchosCaramelos() = niñosQueIntentaron.filter({niñx => niñx.tieneMuchosCaramelos()}).size()
+
+Niñx << tieneMuchosCaramelos() = caramelos > 15
+Legion << tieneMuchosCaramelos() = caramelos > 15
+
+Abuelo << puedeSerAsustadoPor(unAsustador) = true //override
+Abuelo << cantidadDeCaramelosQueBrinda() = super() / 2
+
+AdultoNecio << puedeSerAsustadoPor(unAsustador) = false
+
+--------------------------------------0-------------------------------------------------
+B) LEGIONES
+1. Dado un conjunto de niñxs, crear una legion. Toda legión debe tenet al menos dos niños,
+por lo que la creacion debe fallar si no se cumple esta restricción
+
+constructor(unosMiembros) {
+       self.validarMiembros(unosMiembros)
+   miembros = unosMiembros
+  }
+
+Legion << validarMiembros(unosMiembros) {
+    if(unosMiembros.size() < 2) {
+      throw new LegionException(message = "Una legión debe tener al menos 2 miembros!")
+    }  	
+  }
+
+---------------------------------------------------------------------------------------
+
+2. Hacer que una Legion intente asustar a una persona, obetiendo los caramelos, si aplica.
+
+Legion << asustarA(unaPersona) {      //Niñx y Legion interfaz de Asustador
+    unaPersona.serAsustadaPor(self)
+}
+
+Legion << capacidadDeAsustar() = miembros.sum({miembro => miembro.capacidadDeAsustar()})
+Legion << caramelos() = miembros.sum({miembro => miembro.caramelos()}) //setter
+
+Legion << recibirCaramelos(unaCantidad) {
+    self.lider().recibirCaramelos(unaCantidad)
+}
+
+Legion << lider() = miembros.max(miembro => miembro.capacidadDeAsustar())
+
+---------------------------------------------------------------------------------------
+
+3.Nos informan que los niños han aprendido a formar legiones de legiones, es decir, legiones donde sus miembros puede ser niños
+u otras legiones. Si es necesario hacer algun cambio para soportar este requerimiento, realizarlo. De lo contrario,
+explicar por qué es posible.
+
+POLIMORFISSSSSSSSSSSSMO
+--------------------------------------0-------------------------------------------------
+C) ESTADISTICAS BARRIALES
+1. Los tres niños que más caramelos tienen
+
+Barrio << losTresNiñosConMasCaramelos() = niños.sortedBy({niño1, niño2 => niño1.caramelos() > niño2.caramelos()}).take(3)
+
+---------------------------------------------------------------------------------------
+
+2. Lo elementos, sin repetidos, usados por los niños con más de 10 caramelos.
+
+Barrio >> elementosDeLosCarameludos() = self.elementosDeNiñosConMasDe10().asSet()
+Barrio << elementosDeNiñosConMasDe10() = niños.filter({niño => niño.caramelos() > 10}).map({niño => niño.elementos()})
+
+--------------------------------------0-------------------------------------------------
+D) ALIMENTACION
+1. Hacer que un niño se coma una cantidad dada de caramelos. Si no tiene suficientes caramelos, debe fallar.
+
+Niñx << comerCaramelos(unaCantidad) {
+    if(sePuedeComer(unaCantidad) and self.puedeComer()){
+        self.comerUnosCaramelos(unaCantidad)
+    } 
+}
+
+Niñx << sePuedeComer(unaCantidad) = self.caramelos() >= unaCantidad
+Niñx << comerUnosCaramelos(unaCantidad) {
+    caramelos -= unaCantidad
+    self.cambiarEstadoPor(unaCantidad)
+    actitud = actitud * estado.modificadorActitud()
+}
+
+--------------------------------------0-------------------------------------------------
+E) INDIGESTION
+1. Comer muchos caramelos hace mal!!! Cuando un niño come caramelos, su estado de salud se ve repercutido
+
+Niñx << cambiarEstadoPor(unaCantidad) {
+    estado = estado.afectarsePor(unaCantidad)
+}
+
+empachado << afectarsePor(unaCantidad){
+    if(unosCaramelos > 10){
+        return enCama
+    }
+}
+
+sano >> afectarsePor(unosCaramelos){
+    if(unosCaramelos > 10){
+        return empachado
+    }
+}
+
+enCama << afectarsePor(unosCaramelos) = {}
+
+sano >> modificadorActitud() = 1
+
+empachado >> modificadorActitud() = 0.5
+
+enCama >> modificadorActitud() = 0
+
+
+Niñx >> puedeComer(){
+    return salud.impideComer()
+}
+
+sano >> impideComer() = false
+
+empachado >> impideComer() = false
+
+enCama >> impideComer() = true
